@@ -1,0 +1,1 @@
+name: Vaso, age: 27
