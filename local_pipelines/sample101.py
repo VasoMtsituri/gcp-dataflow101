@@ -34,6 +34,29 @@ class ParseRawData(beam.DoFn):
         return transformed_dicts
 
 
+class FormatToCSV(beam.DoFn):
+    def process(self, dicts):
+        csv_str_lines = []
+
+        logging.info(f'Processing dicts: {dicts}')
+        logging.info(f'Processing dicts type: {type(dicts)}')
+
+        for line in dicts:
+            print(f'Line: {line}')
+            # line_as_str = ','.join(line.values())
+            # csv_str_lines.append(line_as_str)
+
+        return csv_str_lines
+
+
+class ExtractColumns(beam.DoFn):
+    def process(self, dicts):
+        # Assumes that every dict has the same structure( number of keys
+        # and its types, so we can take just first one for extracting the
+        # column names of the final CSV file
+        return ','.join(dicts[0].keys())
+
+
 @click.command()
 @click.option('--f_in', help='Input file')
 @click.option('--f_out', required=False, help='Output file')
@@ -45,10 +68,17 @@ def main(f_in, f_out):
         lines = p | 'ReadFromText' >> beam.io.ReadFromText(f_in)
 
         # Apply a ParDo transform to parse each line into valid dicts.
-        dicts = lines | 'ParseRawData' >> beam.ParDo(ParseRawData())
+        dicts = lines | 'ParseRawData1' >> beam.ParDo(ParseRawData())
+
+        csv_format = dicts | 'FormatToCSV1' >> beam.ParDo(FormatToCSV())
+
+        # header = dicts | 'ExtractColumns1' >> beam.ParDo(ExtractColumns())
 
         # Write the dicts to a file.
-        dicts | 'WriteToText' >> beam.io.WriteToText(f_out)
+        csv_format | 'WriteToText' >> beam.io.WriteToText(
+            file_path_prefix=f_out,
+            file_name_suffix='.csv',
+            header='header')
 
 
 if __name__ == '__main__':

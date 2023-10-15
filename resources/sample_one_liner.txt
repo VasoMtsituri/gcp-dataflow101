@@ -1,1 +1,2 @@
-name: Vaso, age: 27
+name: Vaso, age: 27, weight: 70, height: 166/n
+name: Gio, age: 26, weight 67, height: 165
