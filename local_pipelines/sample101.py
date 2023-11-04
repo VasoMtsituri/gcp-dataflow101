@@ -12,20 +12,21 @@ class ParseRawData(beam.DoFn):
         transformed_dicts = []
         logging.info(f'Lines received: {lines}')
         logging.info(f'Type of Lines received: {type(lines)}')
-        lines = [lines] if not isinstance(lines, list) else lines
+        lines = [lines] if lines is not list else lines
 
         for line in lines:
             parts = line.split(',') if ',' in line else None
 
-            if not parts:
-                logging.info(f'Malformed text line detected: {line}')
-                continue
-
             _dict = {}
             dict_parts = [x.split(':') for x in parts]
 
-            for key in dict_parts:
-                _dict[key[0].strip()] = key[1].strip()
+            for index, key in enumerate(dict_parts):
+                logging.info(f'Idx: {index}')
+                if key:
+                    try:
+                        _dict[key[0].strip()] = key[1].strip()
+                    except IndexError as e:
+                        print('Error')
 
             transformed_dicts.append(_dict)
 
@@ -41,19 +42,25 @@ class FormatToCSV(beam.DoFn):
         logging.info(f'Processing dicts: {dicts}')
         logging.info(f'Processing dicts type: {type(dicts)}')
 
+        if type(dicts) is not list:
+            dicts = [dicts]
+
         for line in dicts:
-            print(f'Line: {line}')
-            # line_as_str = ','.join(line.values())
-            # csv_str_lines.append(line_as_str)
+            logging.info(f'Line: {line}')
+            line_as_str = ','.join(line.values())
+            csv_str_lines.append(line_as_str)
 
         return csv_str_lines
 
 
 class ExtractColumns(beam.DoFn):
     def process(self, dicts):
-        # Assumes that every dict has the same structure( number of keys
+        # Assumes that every dict has the same structure (number of keys
         # and its types, so we can take just first one for extracting the
         # column names of the final CSV file
+        print('Someeeeee')
+        if dicts is not list:
+            dicts = [dicts]
         return ','.join(dicts[0].keys())
 
 
@@ -72,13 +79,13 @@ def main(f_in, f_out):
 
         csv_format = dicts | 'FormatToCSV1' >> beam.ParDo(FormatToCSV())
 
-        # header = dicts | 'ExtractColumns1' >> beam.ParDo(ExtractColumns())
+        header = dicts | 'ExtractColumns1' >> beam.ParDo(ExtractColumns())
 
         # Write the dicts to a file.
         csv_format | 'WriteToText' >> beam.io.WriteToText(
             file_path_prefix=f_out,
             file_name_suffix='.csv',
-            header='header')
+            header=header)
 
 
 if __name__ == '__main__':
